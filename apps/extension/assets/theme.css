@@ -1,0 +1,29 @@
+@import 'tailwindcss';
+
+/* Inlined as a data URI by assetsInlineLimit: a separate font request gets
+   blocked on chrome-extension:// pages, and inlining also avoids a fallback flash. */
+@font-face {
+  font-family: 'Space Grotesk Variable';
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: block;
+  src: url('./fonts/space-grotesk-variable.woff2') format('woff2');
+}
+
+@theme {
+  --font-sans: 'Space Grotesk Variable';
+
+  --color-surface: oklch(0.16 0.02 265);
+  --color-surface-raised: oklch(0.21 0.025 265);
+  --color-ink: oklch(0.97 0.005 265);
+  --color-ink-muted: oklch(0.72 0.02 265);
+  --color-accent: oklch(0.72 0.17 145);
+  --color-warn: oklch(0.78 0.16 65);
+}
+
+/* Deliberately unlayered: inside @layer base this lost to Tailwind's preflight
+   and the font never got requested. Unlayered rules outrank every layer. */
+html {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}

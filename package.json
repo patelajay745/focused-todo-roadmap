@@ -1,0 +1,22 @@
+{
+  "name": "focused-todo-roadmap",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "bun run --filter '*' typecheck",
+    "dev:ext": "bun run --filter '@ftr/extension' dev",
+    "dev:web": "bun run --filter '@ftr/web' dev",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down"
+  },
+  "devDependencies": {
+    "@ftr/core": "workspace:*",
+    "@types/bun": "latest",
+    "typescript": "^5"
+  }
+}

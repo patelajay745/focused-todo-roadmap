@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["bun"],
+    "paths": {
+      "@ftr/core": ["./packages/core/src/index.ts"],
+      "@ftr/core/*": ["./packages/core/src/*"]
+    }
+  },
+  "include": ["packages/*/src/**/*", "packages/*/test/**/*"]
+}
