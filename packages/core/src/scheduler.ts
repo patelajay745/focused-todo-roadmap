@@ -106,27 +106,33 @@ export function scheduleEndDate(schedule: DayPlan[]): DateKey | null {
   return schedule.length > 0 ? schedule[schedule.length - 1]!.date : null;
 }
 
-export function reschedule(roadmap: Roadmap, today: DateKey, mode: RescheduleMode): Roadmap {
-  const remaining = roadmap.tasks.filter((t) => t.status === "todo");
+export function applyPlan(roadmap: Roadmap, plan: PlanConfig, today: DateKey): Roadmap {
+  const remaining = roadmap.tasks.filter((task) => task.status === "todo");
   const history = roadmap.schedule.filter((day) => day.date < today);
 
   if (remaining.length === 0) {
-    return { ...roadmap, schedule: history };
+    return { ...roadmap, plan, schedule: history };
   }
 
+  // Days already gone can't be planned into, so a start date in the past becomes today.
+  const effective: PlanConfig = { ...plan, startDate: maxDateKey(plan.startDate, today) };
+
+  return {
+    ...roadmap,
+    plan: effective,
+    schedule: [...history, ...buildSchedule(remaining, effective)],
+  };
+}
+
+export function reschedule(roadmap: Roadmap, today: DateKey, mode: RescheduleMode): Roadmap {
   const start = nextActiveDay(today, roadmap.plan);
-  const plan: PlanConfig = { ...roadmap.plan, startDate: start, mode: buildMode() };
 
-  return { ...roadmap, plan, schedule: [...history, ...buildSchedule(remaining, plan)] };
+  const nextMode: PlanConfig["mode"] =
+    mode === "relax"
+      ? { kind: "byBudget", minutesPerDay: resolveBudgetSec(roadmap.tasks, roadmap.plan) / 60 }
+      : { kind: "byDate", endDate: maxDateKey(scheduleEndDate(roadmap.schedule) ?? start, start) };
 
-  function buildMode(): PlanConfig["mode"] {
-    if (mode === "relax") {
-      const budgetSec = resolveBudgetSec(roadmap.tasks, roadmap.plan);
-      return { kind: "byBudget", minutesPerDay: budgetSec / 60 };
-    }
-    const currentEnd = scheduleEndDate(roadmap.schedule);
-    return { kind: "byDate", endDate: maxDateKey(currentEnd ?? start, start) };
-  }
+  return applyPlan(roadmap, { ...roadmap.plan, startDate: start, mode: nextMode }, today);
 }
 
 export type ReschedulePreview = {

@@ -1,7 +1,7 @@
 export function ProgressRing({
   fraction,
-  size = 52,
-  stroke = 4,
+  size = 62,
+  stroke = 5,
 }: {
   fraction: number;
   size?: number;
@@ -34,7 +34,7 @@ export function ProgressRing({
           className="stroke-accent transition-[stroke-dashoffset] duration-500"
         />
       </svg>
-      <span className="absolute inset-0 grid place-items-center text-[11px] tabular-nums text-ink-muted">
+      <span className="absolute inset-0 grid place-items-center text-xs tabular-nums text-ink-muted">
         {Math.round(clamped * 100)}%
       </span>
     </div>

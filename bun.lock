@@ -15,6 +15,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@ftr/core": "workspace:*",
+        "pikaicons": "^0.0.5",
         "react": "^19.2.4",
         "react-dom": "^19.2.4",
         "zod": "^4.6.5",
@@ -678,6 +679,8 @@
     "picocolors": ["picocolors@1.1.1", "", {}, "sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA=="],
 
     "picomatch": ["picomatch@4.0.7", "", {}, "sha512-qcJu88Q2IWqJsDD529JKMdwGm/dvInW4HvQnRwiH9JtihJvzGOscDtHE3x1pBKeUOTysQ8kVmLnJ2kJu7yhcGA=="],
+
+    "pikaicons": ["pikaicons@0.0.5", "", { "peerDependencies": { "react": "^16 || ^17 || ^18", "react-dom": "^16 || ^17 || ^18" } }, "sha512-dF5fpk5RuPnC4RfCoVzP2cmmNmKQOjQFgjTubmvNzOw6HxeTK1kNgggTzOaAt/VvtIWcAzSKCsOhIKM20lvtwg=="],
 
     "pino": ["pino@10.3.1", "", { "dependencies": { "@pinojs/redact": "^0.4.0", "atomic-sleep": "^1.0.0", "on-exit-leak-free": "^2.1.0", "pino-abstract-transport": "^3.0.0", "pino-std-serializers": "^7.0.0", "process-warning": "^5.0.0", "quick-format-unescaped": "^4.0.3", "real-require": "^0.2.0", "safe-stable-stringify": "^2.3.1", "sonic-boom": "^4.0.1", "thread-stream": "^4.0.0" }, "bin": { "pino": "bin.js" } }, "sha512-r34yH/GlQpKZbU1BvFFqOjhISRo1MNx1tWYsYvmj6KIRHSPMT2+yHOEb1SG6NMvRoHRF0a07kCOox/9yakl1vg=="],
 

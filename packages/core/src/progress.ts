@@ -1,6 +1,7 @@
-import { toDateKey, type DateKey } from "./dates";
+import { addDays, toDateKey, weekOf, type DateKey } from "./dates";
 import { resolveBudgetSec, scheduleEndDate } from "./scheduler";
 import { isComplete, totalSec, type Roadmap, type Task } from "./types";
+
 
 export type PaceStatus = "ahead" | "on-track" | "behind" | "done";
 
@@ -9,7 +10,8 @@ export type Pace = {
   totalSec: number;
   doneSec: number;
   remainingSec: number;
-  expectedDoneSec: number;
+  dueBeforeTodaySec: number;
+  dueThroughTodaySec: number;
   behindSec: number;
   daysBehind: number;
   endDate: DateKey | null;
@@ -54,20 +56,31 @@ export function getDayView(roadmap: Roadmap, date: DateKey): DayView {
   };
 }
 
+// Skipped videos are outside the plan entirely: counting them as watched time
+// would report "ahead" on a roadmap where nothing has been watched at all.
+function plannedTasks(roadmap: Roadmap): Task[] {
+  return roadmap.tasks.filter((task) => task.status !== "skipped");
+}
+
 export function getPace(roadmap: Roadmap, today: DateKey): Pace {
-  const total = totalSec(roadmap.tasks);
-  const doneSec = totalSec(roadmap.tasks.filter(isComplete));
+  const planned = plannedTasks(roadmap);
+  const total = totalSec(planned);
+  const doneSec = totalSec(planned.filter(isComplete));
 
-  const byId = new Map(roadmap.tasks.map((task) => [task.id, task]));
-  const distinctDueTaskIds = new Set(
-    roadmap.schedule.filter((day) => day.date <= today).flatMap((day) => day.taskIds),
-  );
-  const expectedDoneSec = [...distinctDueTaskIds].reduce(
-    (sum, id) => sum + (byId.get(id)?.durationSec ?? 0),
-    0,
-  );
+  const plannedById = new Map(planned.map((task) => [task.id, task]));
 
-  const behindSec = Math.max(0, Math.min(expectedDoneSec, total) - doneSec);
+  const dueUpTo = (limit: (date: DateKey) => boolean) => {
+    const ids = new Set(
+      roadmap.schedule.filter((day) => limit(day.date)).flatMap((day) => day.taskIds),
+    );
+    return [...ids].reduce((sum, id) => sum + (plannedById.get(id)?.durationSec ?? 0), 0);
+  };
+
+  // Today's videos aren't late until today is over, so only earlier days can put you behind.
+  const dueBeforeTodaySec = dueUpTo((date) => date < today);
+  const dueThroughTodaySec = dueUpTo((date) => date <= today);
+
+  const behindSec = Math.max(0, Math.min(dueBeforeTodaySec, total) - doneSec);
   const budgetSec = safeBudgetSec(roadmap);
 
   return {
@@ -75,7 +88,8 @@ export function getPace(roadmap: Roadmap, today: DateKey): Pace {
     totalSec: total,
     doneSec,
     remainingSec: Math.max(0, total - doneSec),
-    expectedDoneSec,
+    dueBeforeTodaySec,
+    dueThroughTodaySec,
     behindSec,
     daysBehind: budgetSec > 0 ? Math.ceil(behindSec / budgetSec) : 0,
     endDate: scheduleEndDate(roadmap.schedule),
@@ -84,7 +98,7 @@ export function getPace(roadmap: Roadmap, today: DateKey): Pace {
   function resolveStatus(): PaceStatus {
     if (total > 0 && doneSec >= total) return "done";
     if (behindSec > 0) return "behind";
-    if (doneSec > expectedDoneSec) return "ahead";
+    if (doneSec > dueThroughTodaySec) return "ahead";
     return "on-track";
   }
 }
@@ -115,6 +129,76 @@ export function getStreak(roadmap: Roadmap, today: DateKey): number {
   return streak;
 }
 
+export type DayStatus = "cleared" | "partial" | "missed" | "upcoming" | "off";
+
+export type WeekDay = {
+  date: DateKey;
+  isToday: boolean;
+  status: DayStatus;
+  plannedSec: number;
+  doneSec: number;
+  taskCount: number;
+};
+
+export type WeekOptions = {
+  // Which week to show. Defaults to the one containing today.
+  anchor?: DateKey;
+  weekStartsOn?: number;
+};
+
+export function getWeek(
+  roadmaps: Roadmap[],
+  today: DateKey,
+  { anchor = today, weekStartsOn = 1 }: WeekOptions = {},
+): WeekDay[] {
+  return weekOf(anchor, weekStartsOn).map((date) => {
+    const views = roadmaps.map((roadmap) => getDayView(roadmap, date));
+    const withWork = views.filter((view) => view.tasks.length > 0);
+
+    const plannedSec = withWork.reduce((sum, view) => sum + view.plannedSec, 0);
+    const doneSec = withWork.reduce((sum, view) => sum + view.doneSec, 0);
+    const taskCount = withWork.reduce((sum, view) => sum + view.tasks.length, 0);
+
+    return {
+      date,
+      isToday: date === today,
+      status: resolveStatus(),
+      plannedSec,
+      doneSec,
+      taskCount,
+    };
+
+    function resolveStatus(): DayStatus {
+      if (withWork.length === 0) return "off";
+      if (withWork.every((view) => view.isCleared)) return "cleared";
+      if (doneSec > 0) return "partial";
+      return date < today ? "missed" : "upcoming";
+    }
+  });
+}
+
+export function getOverallStreak(roadmaps: Roadmap[], today: DateKey, lookbackDays = 365): number {
+  let streak = 0;
+
+  for (let offset = 0; offset < lookbackDays; offset++) {
+    const date = addDays(today, -offset);
+    const due = roadmaps
+      .map((roadmap) => getDayView(roadmap, date))
+      .filter((view) => view.tasks.length > 0);
+
+    if (due.length === 0) continue;
+    if (due.every((view) => view.isCleared)) {
+      streak++;
+      continue;
+    }
+    // An unfinished today shouldn't zero a streak you haven't lost yet.
+    if (offset === 0) continue;
+    break;
+  }
+
+  return streak;
+}
+
 export type RoadmapProgress = {
   dayIndex: number;
   totalDays: number;
@@ -124,15 +208,15 @@ export type RoadmapProgress = {
 };
 
 export function getProgress(roadmap: Roadmap, today: DateKey): RoadmapProgress {
-  const tasksDone = roadmap.tasks.filter(isComplete).length;
-  const total = totalSec(roadmap.tasks);
-  const doneSec = totalSec(roadmap.tasks.filter(isComplete));
+  const planned = plannedTasks(roadmap);
+  const done = planned.filter(isComplete);
+  const total = totalSec(planned);
 
   return {
     dayIndex: roadmap.schedule.filter((day) => day.date <= today).length,
     totalDays: roadmap.schedule.length,
-    tasksDone,
-    tasksTotal: roadmap.tasks.length,
-    fraction: total > 0 ? doneSec / total : 0,
+    tasksDone: done.length,
+    tasksTotal: planned.length,
+    fraction: total > 0 ? totalSec(done) / total : 0,
   };
 }

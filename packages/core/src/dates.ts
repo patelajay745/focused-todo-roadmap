@@ -40,3 +40,12 @@ export function weekdayOf(key: DateKey): number {
 export function maxDateKey(a: DateKey, b: DateKey): DateKey {
   return a >= b ? a : b;
 }
+
+export function startOfWeek(key: DateKey, weekStartsOn = 1): DateKey {
+  return addDays(key, -((weekdayOf(key) - weekStartsOn + 7) % 7));
+}
+
+export function weekOf(key: DateKey, weekStartsOn = 1): DateKey[] {
+  const start = startOfWeek(key, weekStartsOn);
+  return Array.from({ length: 7 }, (_, offset) => addDays(start, offset));
+}

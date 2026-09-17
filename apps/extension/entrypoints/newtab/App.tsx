@@ -1,21 +1,30 @@
 import { browser } from '#imports';
 import {
+  addDays,
   formatDuration,
   getDayView,
+  getOverallStreak,
   getProgress,
+  getWeek,
   isComplete,
   toDateKey,
   totalSec,
   type DateKey,
   type Roadmap,
 } from '@ftr/core';
+import { Settings01 } from 'pikaicons';
 import { useEffect, useState } from 'react';
+import { WeekStrip } from '../../components/WeekStrip';
 import { listRoadmaps, saveRoadmap, watchRoadmaps } from '../../lib/storage';
-import { TodayCard } from './TodayCard';
+import { DayCard } from './DayCard';
 
 export default function App() {
   const [roadmaps, setRoadmaps] = useState<Roadmap[] | null>(null);
   const today = useToday();
+
+  // null follows today, so a tab left open overnight moves with the date.
+  const [picked, setPicked] = useState<DateKey | null>(null);
+  const date = picked ?? today;
 
   useEffect(() => {
     void listRoadmaps().then(setRoadmaps);
@@ -29,21 +38,45 @@ export default function App() {
     void saveRoadmap(next);
   }
 
-  if (roadmaps === null) return <Shell today={today} />;
+  if (roadmaps === null) return <Shell date={date} today={today} />;
 
-  const active = roadmaps.filter((roadmap) => getDayView(roadmap, today).tasks.length > 0);
+  const active = roadmaps.filter((roadmap) => getDayView(roadmap, date).tasks.length > 0);
   const idle = roadmaps.filter((roadmap) => !active.includes(roadmap));
 
   return (
-    <Shell today={today}>
-      {roadmaps.length === 0 ? <EmptyState /> : null}
+    <Shell
+      date={date}
+      today={today}
+      streak={getOverallStreak(roadmaps, today)}
+      onBackToToday={picked && picked !== today ? () => setPicked(null) : undefined}
+    >
+      {roadmaps.length === 0 ? (
+        <EmptyState />
+      ) : (
+        <WeekStrip
+          days={getWeek(roadmaps, today, { anchor: date })}
+          selected={date}
+          onSelect={(next) => setPicked(next === today ? null : next)}
+          onShiftWeek={(offset) => setPicked(addDays(date, offset * 7))}
+        />
+      )}
 
       {active.map((roadmap) => (
-        <TodayCard key={roadmap.id} roadmap={roadmap} today={today} onChange={update} />
+        <DayCard
+          key={roadmap.id}
+          roadmap={roadmap}
+          date={date}
+          today={today}
+          onChange={update}
+        />
       ))}
 
       {active.length === 0 && roadmaps.length > 0 ? (
-        <p className="text-ink-muted">Nothing scheduled today. Enjoy the day off.</p>
+        <p className="text-sm text-ink-muted">
+          {date === today
+            ? 'Nothing scheduled today. Enjoy the day off.'
+            : 'Nothing was scheduled on this day.'}
+        </p>
       ) : null}
 
       {idle.length > 0 ? <IdleList roadmaps={idle} today={today} /> : null}
@@ -51,24 +84,59 @@ export default function App() {
   );
 }
 
-function Shell({ today, children }: { today: DateKey; children?: React.ReactNode }) {
+function Shell({
+  date,
+  today,
+  streak,
+  onBackToToday,
+  children,
+}: {
+  date: DateKey;
+  today: DateKey;
+  streak?: number;
+  onBackToToday?: () => void;
+  children?: React.ReactNode;
+}) {
   const label = new Intl.DateTimeFormat(undefined, {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
-  }).format(new Date(`${today}T00:00:00`));
+  }).format(new Date(`${date}T00:00:00`));
 
   return (
-    <main className="min-h-screen bg-surface text-ink">
-      <div className="mx-auto max-w-xl px-6 py-16 space-y-5">
-        <header className="flex items-baseline justify-between">
-          <h1 className="text-lg font-medium">{label}</h1>
-          <button
-            onClick={() => void browser.runtime.openOptionsPage()}
-            className="text-xs text-ink-muted transition hover:text-ink"
-          >
-            Settings
-          </button>
+    <main className="font-sans min-h-screen bg-surface text-ink">
+      <div className="mx-auto max-w-2xl space-y-5 px-6 py-14">
+        <header className="flex items-baseline justify-between gap-4">
+          <div className="flex items-baseline gap-3">
+            <h1 className="text-xl font-medium">{label}</h1>
+            {date !== today ? (
+              <span className="text-xs text-ink-muted">
+                {date < today ? 'past' : 'upcoming'}
+              </span>
+            ) : null}
+          </div>
+          <div className="flex items-center gap-4">
+            {onBackToToday ? (
+              <button
+                onClick={onBackToToday}
+                className="text-sm text-accent transition hover:brightness-110"
+              >
+                Today
+              </button>
+            ) : null}
+            {streak !== undefined && streak > 0 ? (
+              <span className="text-sm text-accent">
+                {streak} day{streak === 1 ? '' : 's'} consistent
+              </span>
+            ) : null}
+            <button
+              onClick={() => void browser.runtime.openOptionsPage()}
+              aria-label="Settings"
+              className="text-ink-muted transition hover:text-ink"
+            >
+              <Settings01 className="h-5 w-5" aria-hidden />
+            </button>
+          </div>
         </header>
         {children}
       </div>
@@ -98,16 +166,12 @@ function IdleList({ roadmaps, today }: { roadmaps: Roadmap[]; today: DateKey }) 
       {roadmaps.map((roadmap) => {
         const progress = getProgress(roadmap, today);
         const left = roadmap.tasks.filter((task) => !isComplete(task));
-        const finished = left.length === 0;
 
         return (
-          <li
-            key={roadmap.id}
-            className="flex items-baseline gap-3 rounded-lg px-1 py-1.5 text-sm"
-          >
+          <li key={roadmap.id} className="flex items-baseline gap-3 rounded-lg px-1 py-1.5 text-sm">
             <span className="min-w-0 flex-1 truncate text-ink-muted">{roadmap.title}</span>
             <span className="shrink-0 text-xs text-ink-muted">
-              {finished
+              {left.length === 0
                 ? 'Finished'
                 : `${Math.round(progress.fraction * 100)}% · ${formatDuration(totalSec(left))} left`}
             </span>

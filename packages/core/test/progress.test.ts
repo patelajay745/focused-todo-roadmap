@@ -28,11 +28,29 @@ describe("getPace", () => {
     expect(getPace(roadmap, "2026-01-05").status).toBe("on-track");
   });
 
-  test("reports behind after a skipped day", () => {
+  test("reports behind after a skipped day, counting only days that have ended", () => {
     const pace = getPace(roadmapOf([60, 60, 60]), "2026-01-06");
     expect(pace.status).toBe("behind");
-    expect(pace.behindSec).toBe(120 * 60);
+    expect(pace.behindSec).toBe(60 * 60);
+    expect(pace.daysBehind).toBe(1);
+  });
+
+  test("a roadmap starting today is not behind before you have watched anything", () => {
+    const pace = getPace(roadmapOf([60, 60, 60]), "2026-01-05");
+    expect(pace.status).toBe("on-track");
+    expect(pace.behindSec).toBe(0);
+    expect(pace.daysBehind).toBe(0);
+  });
+
+  test("today's unwatched videos never count as overdue", () => {
+    const pace = getPace(roadmapOf([60, 60, 60]), "2026-01-07");
     expect(pace.daysBehind).toBe(2);
+    expect(pace.behindSec).toBe(120 * 60);
+  });
+
+  test("two missed days read as two days behind", () => {
+    const pace = getPace(roadmapOf([60, 60, 60, 60]), "2026-01-08");
+    expect(pace.daysBehind).toBe(3);
   });
 
   test("reports ahead when you work past today's plan", () => {

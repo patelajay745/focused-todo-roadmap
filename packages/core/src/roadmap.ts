@@ -79,3 +79,23 @@ export function markTask(roadmap: Roadmap, taskId: string, options: MarkTaskOpti
 export function findTaskByVideoId(roadmap: Roadmap, videoId: string): Task | undefined {
   return roadmap.tasks.find((task) => task.videoId === videoId);
 }
+
+export function startPositionOf(roadmap: Roadmap): number {
+  const first = roadmap.tasks.find((task) => task.status !== "skipped");
+  return first?.position ?? roadmap.tasks.length;
+}
+
+// Status only — the caller re-plans, so moving the start point twice costs one rebuild.
+export function withStartPoint(roadmap: Roadmap, startPosition: number): Roadmap {
+  const tasks = roadmap.tasks.map((task) => {
+    // Watched videos stay watched: moving the start point must never erase real progress.
+    if (task.status === "done") return task;
+
+    if (task.position < startPosition) {
+      return task.status === "skipped" ? task : { ...task, status: "skipped" as const };
+    }
+    return task.status === "skipped" ? { ...task, status: "todo" as const } : task;
+  });
+
+  return { ...roadmap, tasks };
+}

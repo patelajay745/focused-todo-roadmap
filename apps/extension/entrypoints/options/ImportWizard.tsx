@@ -1,44 +1,15 @@
-import {
-  ALL_WEEKDAYS,
-  addDays,
-  createRoadmap,
-  formatDuration,
-  parsePlaylistId,
-  resolveBudgetSec,
-  toDateKey,
-  totalSec,
-  type Roadmap,
-} from '@ftr/core';
+import { createRoadmap, formatDuration, parsePlaylistId, toDateKey, totalSec } from '@ftr/core';
 import { useMemo, useState } from 'react';
+import {
+  newPlanDraft,
+  PlanFields,
+  planFromDraft,
+  type PlanDraft,
+} from '../../components/PlanFields';
+import { SchedulePreview } from '../../components/SchedulePreview';
 import { Button, Field, Input, Notice } from '../../components/ui';
 import { saveRoadmap } from '../../lib/storage';
 import { importPlaylist, type PlaylistImport } from '../../lib/youtube-api';
-
-const WEEKDAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-const WEEKDAY_NAMES = [
-  'Sunday',
-  'Monday',
-  'Tuesday',
-  'Wednesday',
-  'Thursday',
-  'Friday',
-  'Saturday',
-];
-
-function describeDaysOff(activeWeekdays: number[]): string {
-  const off = ALL_WEEKDAYS.filter((day) => !activeWeekdays.includes(day)).map(
-    (day) => WEEKDAY_NAMES[day]!,
-  );
-
-  if (off.length === 0) return 'Studying every day — no weekly day off.';
-  if (off.length === 7) return 'Every day is off, so nothing can be scheduled.';
-
-  const list =
-    off.length === 1
-      ? off[0]!
-      : `${off.slice(0, -1).join(', ')} and ${off.at(-1)!}`;
-  return `Off every ${list}. This applies to this playlist only.`;
-}
 
 type Stage =
   | { kind: 'idle' }
@@ -46,24 +17,12 @@ type Stage =
   | { kind: 'ready'; data: PlaylistImport }
   | { kind: 'error'; message: string };
 
-export function ImportWizard({
-  apiKey,
-  onSaved,
-}: {
-  apiKey: string;
-  onSaved: () => void;
-}) {
+export function ImportWizard({ apiKey, onSaved }: { apiKey: string; onSaved: () => void }) {
   const today = toDateKey(new Date());
 
   const [url, setUrl] = useState('');
   const [stage, setStage] = useState<Stage>({ kind: 'idle' });
-  const [startDate, setStartDate] = useState(today);
-  const [modeKind, setModeKind] = useState<'byBudget' | 'byDate'>('byBudget');
-  const [minutesPerDay, setMinutesPerDay] = useState(60);
-  const [endDate, setEndDate] = useState(addDays(today, 30));
-  const [weekdays, setWeekdays] = useState<number[]>(ALL_WEEKDAYS);
-  const [daysOff, setDaysOff] = useState<string[]>([]);
-  const [dayOffDraft, setDayOffDraft] = useState('');
+  const [draft, setDraft] = useState<PlanDraft>(() => newPlanDraft(today));
   const [startIndex, setStartIndex] = useState(0);
   const [saving, setSaving] = useState(false);
 
@@ -77,15 +36,7 @@ export function ImportWizard({
         playlistId: data.playlistId,
         videos: data.videos,
         startIndex,
-        plan: {
-          startDate,
-          mode:
-            modeKind === 'byBudget'
-              ? { kind: 'byBudget', minutesPerDay }
-              : { kind: 'byDate', endDate },
-          activeWeekdays: weekdays,
-          skipDates: daysOff,
-        },
+        plan: planFromDraft(draft),
       });
       return { roadmap, error: null as string | null };
     } catch (cause) {
@@ -94,7 +45,7 @@ export function ImportWizard({
         error: cause instanceof Error ? cause.message : 'Could not build a plan.',
       };
     }
-  }, [data, startDate, modeKind, minutesPerDay, endDate, weekdays, daysOff, startIndex]);
+  }, [data, draft, startIndex]);
 
   async function fetchPlaylist() {
     const playlistId = parsePlaylistId(url);
@@ -105,11 +56,12 @@ export function ImportWizard({
 
     setStage({ kind: 'fetching', fetched: 0 });
     try {
-      const data = await importPlaylist(playlistId, apiKey, (fetched) =>
+      const result = await importPlaylist(playlistId, apiKey, (fetched) =>
         setStage({ kind: 'fetching', fetched }),
       );
-      setStage({ kind: 'ready', data });
+      setStage({ kind: 'ready', data: result });
       setStartIndex(0);
+      setDraft(newPlanDraft(today));
     } catch (cause) {
       setStage({
         kind: 'error',
@@ -131,18 +83,9 @@ export function ImportWizard({
     }
   }
 
-  function toggleWeekday(day: number) {
-    setWeekdays((current) =>
-      current.includes(day) ? current.filter((d) => d !== day) : [...current, day].sort(),
-    );
-  }
-
   return (
     <div className="space-y-4">
-      <Field
-        label="Playlist URL"
-        hint="Paste a YouTube playlist link, or just the playlist ID."
-      >
+      <Field label="Playlist URL" hint="Paste a YouTube playlist link, or just the playlist ID.">
         <div className="flex gap-2">
           <Input
             value={url}
@@ -172,7 +115,9 @@ export function ImportWizard({
             <p className="mt-0.5 text-xs text-ink-muted">
               {data.videos.length} videos · {formatDuration(totalSec(data.videos))} total
               {data.unavailable > 0
-                ? ` · ${data.unavailable} private or deleted video${data.unavailable === 1 ? '' : 's'} skipped`
+                ? ` · ${data.unavailable} private or deleted video${
+                    data.unavailable === 1 ? '' : 's'
+                  } skipped`
                 : ''}
             </p>
           </div>
@@ -188,7 +133,7 @@ export function ImportWizard({
             <select
               value={startIndex}
               onChange={(event) => setStartIndex(Number(event.target.value))}
-              className="w-full rounded-lg bg-surface border border-white/10 px-3 py-2 text-sm text-ink outline-none focus:border-accent/60"
+              className="w-full rounded-lg border border-white/10 bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-accent/60"
             >
               {data.videos.map((video, index) => (
                 <option key={video.videoId} value={index}>
@@ -198,112 +143,10 @@ export function ImportWizard({
             </select>
           </Field>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Start date">
-              <Input
-                type="date"
-                value={startDate}
-                onChange={(event) => setStartDate(event.target.value)}
-              />
-            </Field>
-
-            <Field label="Pace">
-              <div className="flex gap-2">
-                <Button
-                  variant={modeKind === 'byBudget' ? 'primary' : 'ghost'}
-                  onClick={() => setModeKind('byBudget')}
-                  className="flex-1"
-                >
-                  Per day
-                </Button>
-                <Button
-                  variant={modeKind === 'byDate' ? 'primary' : 'ghost'}
-                  onClick={() => setModeKind('byDate')}
-                  className="flex-1"
-                >
-                  By date
-                </Button>
-              </div>
-            </Field>
-          </div>
-
-          {modeKind === 'byBudget' ? (
-            <Field label="Minutes per day">
-              <Input
-                type="number"
-                min={5}
-                step={5}
-                value={minutesPerDay}
-                onChange={(event) => setMinutesPerDay(Math.max(5, Number(event.target.value)))}
-              />
-            </Field>
-          ) : (
-            <Field label="Finish by">
-              <Input
-                type="date"
-                value={endDate}
-                onChange={(event) => setEndDate(event.target.value)}
-              />
-            </Field>
-          )}
-
-          <Field label="Study days" hint={describeDaysOff(weekdays)}>
-            <div className="flex gap-1.5">
-              {WEEKDAY_LABELS.map((label, day) => (
-                <button
-                  key={day}
-                  onClick={() => toggleWeekday(day)}
-                  className={`h-9 w-9 rounded-lg text-sm transition ${
-                    weekdays.includes(day)
-                      ? 'bg-accent text-surface font-medium'
-                      : 'border border-white/10 text-ink-muted hover:bg-white/5'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </Field>
-
-          <Field label="Days off" hint="Specific dates to skip — travel, exams, anything.">
-            <div className="flex gap-2">
-              <Input
-                type="date"
-                value={dayOffDraft}
-                onChange={(event) => setDayOffDraft(event.target.value)}
-              />
-              <Button
-                variant="ghost"
-                disabled={!dayOffDraft || daysOff.includes(dayOffDraft)}
-                onClick={() => {
-                  setDaysOff((current) => [...current, dayOffDraft].sort());
-                  setDayOffDraft('');
-                }}
-              >
-                Add
-              </Button>
-            </div>
-            {daysOff.length > 0 ? (
-              <ul className="mt-2 flex flex-wrap gap-1.5">
-                {daysOff.map((date) => (
-                  <li key={date}>
-                    <button
-                      onClick={() => setDaysOff((current) => current.filter((d) => d !== date))}
-                      className="rounded-md border border-white/10 px-2 py-1 text-xs text-ink-muted hover:border-warn/40 hover:text-warn"
-                    >
-                      {date} ×
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </Field>
+          <PlanFields draft={draft} onChange={setDraft} />
 
           {preview?.error ? <Notice tone="error">{preview.error}</Notice> : null}
-
-          {preview?.roadmap ? (
-            <SchedulePreview roadmap={preview.roadmap} />
-          ) : null}
+          {preview?.roadmap ? <SchedulePreview roadmap={preview.roadmap} /> : null}
 
           <div className="flex gap-2">
             <Button onClick={() => void save()} disabled={!preview?.roadmap || saving}>
@@ -315,60 +158,6 @@ export function ImportWizard({
           </div>
         </>
       ) : null}
-    </div>
-  );
-}
-
-function SchedulePreview({ roadmap }: { roadmap: Roadmap }) {
-  const byId = new Map(roadmap.tasks.map((task) => [task.id, task]));
-  const lastDay = roadmap.schedule.at(-1);
-
-  const planned = roadmap.tasks.filter((task) => task.status === 'todo');
-  const skipped = roadmap.tasks.length - planned.length;
-
-  const budgetSec = resolveBudgetSec(planned, roadmap.plan);
-  const overruns = roadmap.schedule.filter((day) => day.plannedSec > budgetSec);
-  const longestVideo = Math.max(...planned.map((task) => task.durationSec));
-
-  return (
-    <div className="space-y-3">
-      {overruns.length > 0 ? (
-        <Notice tone="info">
-          {overruns.length} day{overruns.length === 1 ? '' : 's'} run over your target because a
-          single video is longer than it — the longest is {formatDuration(longestVideo)}. Videos
-          are never split across days.
-        </Notice>
-      ) : null}
-
-      <div className="rounded-lg border border-white/10">
-        <div className="flex items-baseline justify-between border-b border-white/5 px-3 py-2.5">
-          <p className="text-sm font-medium">
-            {roadmap.schedule.length} study day{roadmap.schedule.length === 1 ? '' : 's'}
-            <span className="ml-2 font-normal text-xs text-ink-muted">
-              {planned.length} video{planned.length === 1 ? '' : 's'} ·{' '}
-              {formatDuration(totalSec(planned))}
-              {skipped > 0 ? ` · ${skipped} skipped` : ''}
-            </span>
-          </p>
-          <p className="text-xs text-ink-muted">ends {lastDay?.date}</p>
-        </div>
-        <ul className="max-h-64 overflow-y-auto divide-y divide-white/5">
-          {roadmap.schedule.map((day, index) => (
-            <li key={day.date} className="flex items-baseline gap-3 px-3 py-2 text-xs">
-              <span className="w-6 shrink-0 text-ink-muted">{index + 1}</span>
-              <span className="w-24 shrink-0 text-ink-muted">{day.date}</span>
-              <span
-                className={`w-14 shrink-0 ${day.plannedSec > budgetSec ? 'text-warn' : ''}`}
-              >
-                {formatDuration(day.plannedSec)}
-              </span>
-              <span className="truncate text-ink-muted">
-                {day.taskIds.map((id) => byId.get(id)?.title).filter(Boolean).join(' · ')}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </div>
     </div>
   );
 }
