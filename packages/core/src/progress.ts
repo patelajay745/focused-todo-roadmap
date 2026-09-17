@@ -58,13 +58,11 @@ export function getPace(roadmap: Roadmap, today: DateKey): Pace {
   const total = totalSec(roadmap.tasks);
   const doneSec = totalSec(roadmap.tasks.filter(isComplete));
 
-  // Rescheduling leaves an unfinished task on both its missed day and its new one,
-  // so expected work is summed over distinct tasks rather than over day totals.
   const byId = new Map(roadmap.tasks.map((task) => [task.id, task]));
-  const dueIds = new Set(
+  const distinctDueTaskIds = new Set(
     roadmap.schedule.filter((day) => day.date <= today).flatMap((day) => day.taskIds),
   );
-  const expectedDoneSec = [...dueIds].reduce(
+  const expectedDoneSec = [...distinctDueTaskIds].reduce(
     (sum, id) => sum + (byId.get(id)?.durationSec ?? 0),
     0,
   );

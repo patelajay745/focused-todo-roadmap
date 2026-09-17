@@ -1,7 +1,6 @@
 @import 'tailwindcss';
 
-/* Inlined as a data URI by assetsInlineLimit: a separate font request gets
-   blocked on chrome-extension:// pages, and inlining also avoids a fallback flash. */
+/* Inlined via assetsInlineLimit — a separate font request gets blocked on chrome-extension:// pages. */
 @font-face {
   font-family: 'Space Grotesk Variable';
   font-style: normal;
@@ -21,8 +20,7 @@
   --color-warn: oklch(0.78 0.16 65);
 }
 
-/* Deliberately unlayered: inside @layer base this lost to Tailwind's preflight
-   and the font never got requested. Unlayered rules outrank every layer. */
+/* Must stay unlayered — inside @layer base this loses to Tailwind's preflight. */
 html {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;

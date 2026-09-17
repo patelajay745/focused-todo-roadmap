@@ -17,8 +17,6 @@ export async function listRoadmaps(): Promise<Roadmap[]> {
   const stored = await roadmapsItem.getValue();
   if (!Array.isArray(stored)) return [];
 
-  // Anything that no longer matches the schema is dropped rather than thrown on,
-  // so a shape change can never leave the new tab unable to render.
   return stored.flatMap((entry) => {
     const parsed = roadmapSchema.safeParse(entry);
     return parsed.success ? [parsed.data] : [];
