@@ -13,5 +13,6 @@ export default defineConfig({
     name: 'Focused Todo Roadmap',
     description: 'Turns a YouTube playlist into a dated plan on your new tab.',
     permissions: ['storage', 'alarms'],
+    host_permissions: ['https://www.googleapis.com/*'],
   },
 });

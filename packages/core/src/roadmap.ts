@@ -12,12 +12,17 @@ export type CreateRoadmapInput = {
   playlistId: string;
   videos: ImportedVideo[];
   plan: PlanConfig;
+  startIndex?: number;
   now?: Date;
 };
 
 export function createRoadmap(input: CreateRoadmapInput): Roadmap {
   const timestamp = (input.now ?? new Date()).toISOString();
+  const startIndex = Math.min(Math.max(0, Math.trunc(input.startIndex ?? 0)), input.videos.length);
 
+  // Videos before the start point stay on the roadmap as `skipped` so playlist
+  // numbering survives and you can pick them up later. They get no completedAt,
+  // which keeps them out of every day view.
   const tasks: Task[] = input.videos.map((video, index) => ({
     id: `${input.playlistId}:${video.videoId}:${index}`,
     videoId: video.videoId,
@@ -25,7 +30,7 @@ export function createRoadmap(input: CreateRoadmapInput): Roadmap {
     position: index,
     title: video.title,
     durationSec: Math.max(0, Math.round(video.durationSec)),
-    status: "todo",
+    status: index < startIndex ? "skipped" : "todo",
   }));
 
   return {
@@ -34,7 +39,10 @@ export function createRoadmap(input: CreateRoadmapInput): Roadmap {
     playlistId: input.playlistId,
     tasks,
     plan: input.plan,
-    schedule: buildSchedule(tasks, input.plan),
+    schedule: buildSchedule(
+      tasks.filter((task) => task.status === "todo"),
+      input.plan,
+    ),
     createdAt: timestamp,
     updatedAt: timestamp,
   };

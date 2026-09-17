@@ -58,6 +58,6 @@ export function isComplete(task: Task): boolean {
   return task.status === "done" || task.status === "skipped";
 }
 
-export function totalSec(tasks: Task[]): number {
-  return tasks.reduce((sum, task) => sum + task.durationSec, 0);
+export function totalSec(items: { durationSec: number }[]): number {
+  return items.reduce((sum, item) => sum + item.durationSec, 0);
 }
