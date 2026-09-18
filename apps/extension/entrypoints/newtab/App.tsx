@@ -14,6 +14,7 @@ import {
 } from '@ftr/core';
 import { Settings01 } from 'pikaicons';
 import { useEffect, useState } from 'react';
+import { SyncIndicator } from '../../components/SyncIndicator';
 import { WeekStrip } from '../../components/WeekStrip';
 import { listRoadmaps, saveRoadmap, watchRoadmaps } from '../../lib/storage';
 import { DayCard } from './DayCard';
@@ -139,6 +140,7 @@ function Shell({
         </header>
         {children}
       </div>
+      <SyncIndicator />
     </main>
   );
 }

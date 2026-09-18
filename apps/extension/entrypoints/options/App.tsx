@@ -3,8 +3,10 @@ import { DeleteDustbin, EditPencil } from 'pikaicons';
 import { useEffect, useState } from 'react';
 import { Button, Card, Field, Input, Notice } from '../../components/ui';
 import { deleteRoadmap, listRoadmaps, settingsItem } from '../../lib/storage';
+import { BlockingSection } from './BlockingSection';
 import { ImportWizard } from './ImportWizard';
 import { RoadmapEditor } from './RoadmapEditor';
+import { SyncSection } from './SyncSection';
 
 export default function App() {
   const [apiKey, setApiKey] = useState('');
@@ -86,6 +88,16 @@ export default function App() {
           ) : (
             <Notice tone="info">Add your API key above to start importing.</Notice>
           )}
+        </Card>
+
+        <Card>
+          <h2 className="mb-4 text-sm font-semibold">Focus mode</h2>
+          <BlockingSection />
+        </Card>
+
+        <Card>
+          <h2 className="mb-4 text-sm font-semibold">Database backup</h2>
+          <SyncSection />
         </Card>
 
         <Card>

@@ -66,15 +66,17 @@ export function getPace(roadmap: Roadmap, today: DateKey): Pace {
 
   const plannedById = new Map(planned.map((task) => [task.id, task]));
 
-  const dueUpTo = (limit: (date: DateKey) => boolean) => {
-    const ids = new Set(
-      roadmap.schedule.filter((day) => limit(day.date)).flatMap((day) => day.taskIds),
-    );
-    return [...ids].reduce((sum, id) => sum + (plannedById.get(id)?.durationSec ?? 0), 0);
-  };
+  const idsOn = (limit: (date: DateKey) => boolean) =>
+    new Set(roadmap.schedule.filter((day) => limit(day.date)).flatMap((day) => day.taskIds));
 
-  const dueBeforeTodaySec = dueUpTo((date) => date < today);
-  const dueThroughTodaySec = dueUpTo((date) => date <= today);
+  const sumOf = (ids: Iterable<string>) =>
+    [...ids].reduce((sum, id) => sum + (plannedById.get(id)?.durationSec ?? 0), 0);
+
+  const replannedAhead = idsOn((date) => date >= today);
+  const overdueIds = [...idsOn((date) => date < today)].filter((id) => !replannedAhead.has(id));
+
+  const dueBeforeTodaySec = sumOf(overdueIds);
+  const dueThroughTodaySec = sumOf(idsOn((date) => date <= today));
 
   const behindSec = Math.max(0, Math.min(dueBeforeTodaySec, total) - doneSec);
   const budgetSec = safeBudgetSec(roadmap);

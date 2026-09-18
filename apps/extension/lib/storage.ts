@@ -1,5 +1,6 @@
 import { storage } from '#imports';
 import { roadmapSchema, type Roadmap } from '@ftr/core';
+import { DEFAULT_BLOCKING, type BlockingSettings } from './blocking';
 
 export type Settings = {
   youtubeApiKey: string;
@@ -7,6 +8,24 @@ export type Settings = {
 
 export const settingsItem = storage.defineItem<Settings>('local:settings', {
   fallback: { youtubeApiKey: '' },
+});
+
+export const blockingItem = storage.defineItem<BlockingSettings>('local:blocking', {
+  fallback: DEFAULT_BLOCKING,
+});
+
+export const bypassUntilItem = storage.defineItem<number | null>('local:bypassUntil', {
+  fallback: null,
+});
+
+export type BypassRecord = {
+  at: string;
+  reason: string;
+  minutes: number;
+};
+
+export const bypassLogItem = storage.defineItem<BypassRecord[]>('local:bypassLog', {
+  fallback: [],
 });
 
 const roadmapsItem = storage.defineItem<unknown[]>('local:roadmaps', {

@@ -1,0 +1,23 @@
+{
+  "name": "@ftr/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "push": "bun run src/migrate.ts",
+    "studio": "drizzle-kit studio",
+    "generate": "drizzle-kit generate"
+  },
+  "dependencies": {
+    "@ftr/core": "workspace:*",
+    "drizzle-orm": "0.45.2"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.31.10"
+  }
+}

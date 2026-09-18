@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: focused-todo-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: focused
+      POSTGRES_PASSWORD: focused
+      POSTGRES_DB: focused
+    ports:
+      - '5005:5432'
+    volumes:
+      - focused-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U focused -d focused']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  focused-pgdata:

@@ -14,6 +14,8 @@ import {
 } from '@ftr/core';
 import { ArrowRight, CheckTick } from 'pikaicons';
 import { ProgressRing } from '../../components/ProgressRing';
+import { formatDay } from '../../lib/format';
+import { RescheduleBanner } from './RescheduleBanner';
 
 export function DayCard({
   roadmap,
@@ -63,6 +65,10 @@ export function DayCard({
           {formatDuration(pace.totalSec)} watched
         </p>
       </div>
+
+      {pace.status === 'behind' && date === today ? (
+        <RescheduleBanner roadmap={roadmap} today={today} pace={pace} onChange={onChange} />
+      ) : null}
 
       {view.tasks.length === 0 ? (
         <p className="mt-4 text-sm text-ink-muted">Nothing was scheduled on this day.</p>
@@ -141,6 +147,7 @@ function PaceLine({
   }
 
   if (pace.status === 'behind') {
+    if (isToday) return null;
     return (
       <p className="mt-1 text-sm text-warn">
         {pace.daysBehind} day{pace.daysBehind === 1 ? '' : 's'} behind ·{' '}
@@ -155,11 +162,5 @@ function PaceLine({
       {label}
       {isToday && remainingToday > 0 ? ` · ${formatDuration(remainingToday)} left today` : ''}
     </p>
-  );
-}
-
-function formatDay(date: DateKey): string {
-  return new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' }).format(
-    new Date(`${date}T00:00:00`),
   );
 }

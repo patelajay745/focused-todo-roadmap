@@ -12,7 +12,9 @@
     "dev:ext": "bun run --filter '@ftr/extension' dev",
     "dev:web": "bun run --filter '@ftr/web' dev",
     "db:up": "docker compose up -d",
-    "db:down": "docker compose down"
+    "db:down": "docker compose down",
+    "db:push": "bun run --filter '@ftr/db' push",
+    "db:logs": "docker compose logs -f postgres"
   },
   "devDependencies": {
     "@ftr/core": "workspace:*",
