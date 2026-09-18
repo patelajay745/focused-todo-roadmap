@@ -150,7 +150,6 @@ export async function importPlaylist(
     key,
   );
 
-  // videos.list omits private and deleted videos, so a missing duration is the only signal.
   const videos = entries.flatMap((entry) => {
     const durationSec = durations.get(entry.videoId);
     if (durationSec === undefined || durationSec === 0) return [];

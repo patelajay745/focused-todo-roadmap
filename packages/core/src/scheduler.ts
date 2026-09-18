@@ -114,7 +114,6 @@ export function applyPlan(roadmap: Roadmap, plan: PlanConfig, today: DateKey): R
     return { ...roadmap, plan, schedule: history };
   }
 
-  // Days already gone can't be planned into, so a start date in the past becomes today.
   const effective: PlanConfig = { ...plan, startDate: maxDateKey(plan.startDate, today) };
 
   return {

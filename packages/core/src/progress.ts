@@ -2,7 +2,6 @@ import { addDays, toDateKey, weekOf, type DateKey } from "./dates";
 import { resolveBudgetSec, scheduleEndDate } from "./scheduler";
 import { isComplete, totalSec, type Roadmap, type Task } from "./types";
 
-
 export type PaceStatus = "ahead" | "on-track" | "behind" | "done";
 
 export type Pace = {
@@ -56,8 +55,6 @@ export function getDayView(roadmap: Roadmap, date: DateKey): DayView {
   };
 }
 
-// Skipped videos are outside the plan entirely: counting them as watched time
-// would report "ahead" on a roadmap where nothing has been watched at all.
 function plannedTasks(roadmap: Roadmap): Task[] {
   return roadmap.tasks.filter((task) => task.status !== "skipped");
 }
@@ -76,7 +73,6 @@ export function getPace(roadmap: Roadmap, today: DateKey): Pace {
     return [...ids].reduce((sum, id) => sum + (plannedById.get(id)?.durationSec ?? 0), 0);
   };
 
-  // Today's videos aren't late until today is over, so only earlier days can put you behind.
   const dueBeforeTodaySec = dueUpTo((date) => date < today);
   const dueThroughTodaySec = dueUpTo((date) => date <= today);
 
@@ -122,7 +118,6 @@ export function getStreak(roadmap: Roadmap, today: DateKey): number {
       streak++;
       continue;
     }
-    // An unfinished today shouldn't zero a streak you haven't lost yet.
     if (index === 0 && day.date === today) continue;
     break;
   }
@@ -141,7 +136,6 @@ export type WeekDay = {
 };
 
 export type WeekOptions = {
-  // Which week to show. Defaults to the one containing today.
   anchor?: DateKey;
   weekStartsOn?: number;
 };
@@ -191,7 +185,6 @@ export function getOverallStreak(roadmaps: Roadmap[], today: DateKey, lookbackDa
       streak++;
       continue;
     }
-    // An unfinished today shouldn't zero a streak you haven't lost yet.
     if (offset === 0) continue;
     break;
   }

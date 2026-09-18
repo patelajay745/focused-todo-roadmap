@@ -22,7 +22,6 @@ export default function App() {
   const [roadmaps, setRoadmaps] = useState<Roadmap[] | null>(null);
   const today = useToday();
 
-  // null follows today, so a tab left open overnight moves with the date.
   const [picked, setPicked] = useState<DateKey | null>(null);
   const date = picked ?? today;
 

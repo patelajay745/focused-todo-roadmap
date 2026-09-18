@@ -1,6 +1,4 @@
 @import 'tailwindcss';
-
-/* Inlined via assetsInlineLimit — a separate font request gets blocked on chrome-extension:// pages. */
 @font-face {
   font-family: 'Space Grotesk Variable';
   font-style: normal;
@@ -11,8 +9,6 @@
 
 @theme {
   --font-sans: 'Space Grotesk Variable';
-
-  /* Every step is bumped ~2px above Tailwind's default scale. */
   --text-xs: 0.875rem;
   --text-xs--line-height: 1.45;
   --text-sm: 1rem;
@@ -35,8 +31,6 @@
   --color-accent: oklch(0.72 0.17 145);
   --color-warn: oklch(0.78 0.16 65);
 }
-
-/* Must stay unlayered — inside @layer base this loses to Tailwind's preflight. */
 html {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;

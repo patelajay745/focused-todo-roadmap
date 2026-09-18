@@ -20,7 +20,6 @@ export function createRoadmap(input: CreateRoadmapInput): Roadmap {
   const timestamp = (input.now ?? new Date()).toISOString();
   const startIndex = Math.min(Math.max(0, Math.trunc(input.startIndex ?? 0)), input.videos.length);
 
-  // Skipped videos deliberately get no completedAt, which keeps them out of every day view.
   const tasks: Task[] = input.videos.map((video, index) => ({
     id: `${input.playlistId}:${video.videoId}:${index}`,
     videoId: video.videoId,
@@ -85,10 +84,8 @@ export function startPositionOf(roadmap: Roadmap): number {
   return first?.position ?? roadmap.tasks.length;
 }
 
-// Status only — the caller re-plans, so moving the start point twice costs one rebuild.
 export function withStartPoint(roadmap: Roadmap, startPosition: number): Roadmap {
   const tasks = roadmap.tasks.map((task) => {
-    // Watched videos stay watched: moving the start point must never erase real progress.
     if (task.status === "done") return task;
 
     if (task.position < startPosition) {
